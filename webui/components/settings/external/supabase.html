@@ -1,0 +1,75 @@
+<html>
+  <head>
+    <title>Supabase Memory</title>
+  </head>
+
+  <body>
+    <div
+      x-data="{
+        get settings() { return $store.settings.settings }
+      }"
+    >
+      <template x-if="settings">
+        <div>
+          <div class="section-title">Supabase Memory</div>
+          <div class="section-description">
+            Connect Agent Zero to a Supabase project with pgvector so memories
+            persist across Docker container rebuilds. Leave blank to use the
+            default local FAISS storage instead.
+            <br /><br />
+            Required Supabase setup — run once in the SQL editor of your project:
+            <pre style="font-size:0.75em; overflow:auto; background:var(--color-bg-2); padding:0.5em; border-radius:4px; margin-top:0.5em">create extension if not exists vector;
+
+create table if not exists agent_zero_memories (
+  id       text primary key,
+  subdir   text not null,
+  content  text not null,
+  metadata jsonb not null default '{}',
+  embedding vector(384)
+);
+
+create or replace function match_memories(
+  query_embedding vector, match_subdir text,
+  match_count int, match_threshold float)
+returns table(id text, content text, metadata jsonb, similarity float)
+language sql stable as $$
+  select id, content, metadata,
+    1 - (embedding &lt;=&gt; query_embedding) as similarity
+  from agent_zero_memories
+  where subdir = match_subdir
+    and 1 - (embedding &lt;=&gt; query_embedding) &gt;= match_threshold
+  order by embedding &lt;=&gt; query_embedding limit match_count;
+$$;</pre>
+          </div>
+
+          <div class="field">
+            <div class="field-label">
+              <div class="field-title">Project URL</div>
+              <div class="field-description">
+                Your Supabase project URL, e.g.
+                https://abcxyz.supabase.co
+              </div>
+            </div>
+            <div class="field-control">
+              <input type="text" placeholder="https://your-project.supabase.co"
+                     x-model="settings.supabase_url" />
+            </div>
+          </div>
+
+          <div class="field">
+            <div class="field-label">
+              <div class="field-title">API Key (anon/service)</div>
+              <div class="field-description">
+                Supabase anon key or service role key from Project Settings → API
+              </div>
+            </div>
+            <div class="field-control">
+              <input type="password" autocomplete="off"
+                     x-model="settings.supabase_key" />
+            </div>
+          </div>
+        </div>
+      </template>
+    </div>
+  </body>
+</html>

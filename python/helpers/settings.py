@@ -124,6 +124,9 @@ class Settings(TypedDict):
     auth_password: str
     root_password: str
 
+    supabase_url: str
+    supabase_key: str
+
     rfc_auto_docker: bool
     rfc_url: str
     rfc_password: str
@@ -307,6 +310,10 @@ def convert_out(settings: Settings) -> SettingsOutput:
     out["settings"]["root_password"] = (
         PASSWORD_PLACEHOLDER if dotenv.get_dotenv_value(dotenv.KEY_ROOT_PASSWORD) else ""
     )
+    out["settings"]["supabase_url"] = dotenv.get_dotenv_value(dotenv.KEY_SUPABASE_URL) or ""
+    out["settings"]["supabase_key"] = (
+        PASSWORD_PLACEHOLDER if dotenv.get_dotenv_value(dotenv.KEY_SUPABASE_KEY) else ""
+    )
 
     #secrets
     secrets_manager = get_default_secrets_manager()
@@ -451,6 +458,8 @@ def _load_sensitive_settings(settings: Settings):
     settings["auth_password"] = dotenv.get_dotenv_value(dotenv.KEY_AUTH_PASSWORD) or ""
     settings["rfc_password"] = dotenv.get_dotenv_value(dotenv.KEY_RFC_PASSWORD) or ""
     settings["root_password"] = dotenv.get_dotenv_value(dotenv.KEY_ROOT_PASSWORD) or ""
+    settings["supabase_url"] = dotenv.get_dotenv_value(dotenv.KEY_SUPABASE_URL) or ""
+    settings["supabase_key"] = dotenv.get_dotenv_value(dotenv.KEY_SUPABASE_KEY) or ""
 
     # load secrets raw content
     secrets_manager = get_default_secrets_manager()
@@ -483,6 +492,8 @@ def _remove_sensitive_settings(settings: Settings):
     settings["auth_password"] = ""
     settings["rfc_password"] = ""
     settings["root_password"] = ""
+    settings["supabase_url"] = ""
+    settings["supabase_key"] = ""
     settings["mcp_server_token"] = ""
     settings["secrets"] = ""
 
@@ -497,6 +508,10 @@ def _write_sensitive_settings(settings: Settings):
         dotenv.save_dotenv_value(dotenv.KEY_AUTH_PASSWORD, settings["auth_password"])
     if settings["rfc_password"] != PASSWORD_PLACEHOLDER:
         dotenv.save_dotenv_value(dotenv.KEY_RFC_PASSWORD, settings["rfc_password"])
+    if settings["supabase_url"]:
+        dotenv.save_dotenv_value(dotenv.KEY_SUPABASE_URL, settings["supabase_url"])
+    if settings["supabase_key"] != PASSWORD_PLACEHOLDER:
+        dotenv.save_dotenv_value(dotenv.KEY_SUPABASE_KEY, settings["supabase_key"])
     if settings["root_password"] != PASSWORD_PLACEHOLDER:
         if runtime.is_dockerized():
             dotenv.save_dotenv_value(dotenv.KEY_ROOT_PASSWORD, settings["root_password"])
@@ -565,6 +580,8 @@ def get_default_settings() -> Settings:
         auth_login="",
         auth_password="",
         root_password="",
+        supabase_url="",
+        supabase_key="",
         agent_profile=get_default_value("agent_profile", "agent0"),
         agent_memory_subdir=get_default_value("agent_memory_subdir", "default"),
         agent_knowledge_subdir=get_default_value("agent_knowledge_subdir", "custom"),

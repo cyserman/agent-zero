@@ -58,7 +58,7 @@ class Memory:
         FRAGMENTS = "fragments"
         SOLUTIONS = "solutions"
 
-    index: dict[str, "MyFaiss"] = {}
+    index: dict[str, "MyFaiss | Any"] = {}
 
     @staticmethod
     async def get(agent: Agent):
@@ -130,12 +130,25 @@ class Memory:
         model_config: models.ModelConfig,
         memory_subdir: str,
         in_memory=False,
-    ) -> tuple[MyFaiss, bool]:
+    ) -> tuple["MyFaiss | Any", bool]:
 
         PrintStyle.standard("Initializing VectorDB...")
 
         if log_item:
             log_item.stream(progress="\nInitializing VectorDB")
+
+        # Use Supabase if configured
+        from python.helpers import supabase_vector_db
+        if supabase_vector_db.is_configured():
+            if log_item:
+                log_item.stream(progress="\nUsing Supabase pgvector backend")
+            embeddings_model = models.get_embedding_model(
+                model_config.provider,
+                model_config.name,
+                **model_config.build_kwargs(),
+            )
+            db = supabase_vector_db.SupabaseVectorDB(embeddings_model, memory_subdir)
+            return db, False
 
         em_dir = files.get_abs_path(
             "tmp/memory/embeddings"
@@ -240,7 +253,7 @@ class Memory:
 
     def __init__(
         self,
-        db: MyFaiss,
+        db: "MyFaiss | Any",
         memory_subdir: str,
     ):
         self.db = db
@@ -424,7 +437,8 @@ class Memory:
                 return doc_id
 
     @staticmethod
-    def _save_db_file(db: MyFaiss, memory_subdir: str):
+    def _save_db_file(db: "MyFaiss | Any", memory_subdir: str):
+        # SupabaseVectorDB.save_local() is a no-op; FAISS saves to disk
         abs_dir = abs_db_dir(memory_subdir)
         db.save_local(folder_path=abs_dir)
 
